@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GoalType {
+  CALORIE_INTAKE
+  MEAT_FREE_MEALS
+  WEIGHT_MANAGEMENT
+}
+
+enum PeriodUnit {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum RecipePreference {
+  VEGAN
+  VEGETARIAN
+  OMNIVORE
+}
+
+enum ChallengeStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+enum BadgeType {
+  VEGAN_STREAK
+  MEAT_FREE_MEALS
+  CO2_SAVINGS
+  WEIGHT_GOAL
+}
+
+model User {
+  id            String            @id @default(cuid())
+  email         String            @unique
+  name          String?
+  meals         Meal[]
+  goals         Goal[]
+  recipes       Recipe[]          @relation("UserRecipes")
+  waterIntakes  WaterIntake[]
+  weightEntries WeightEntry[]
+  posts         Post[]
+  likes         Like[]
+  comments      Comment[]
+  achievements  UserChallenge[]
+  badges        Badge[]
+  shoppingLists ShoppingList[]
+  fitnessAccounts FitnessAccount[]
+  mealPlans     MealPlan[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model Meal {
+  id                 String            @id @default(cuid())
+  user               User              @relation(fields: [userId], references: [id])
+  userId             String
+  title              String
+  calories           Int
+  carbohydrates      Float
+  fat                Float
+  protein            Float
+  containsMeat       Boolean           @default(false)
+  vegetarian         Boolean           @default(false)
+  vegan              Boolean           @default(false)
+  imageUrl           String?
+  date               DateTime
+  rating             Int               @default(0)
+  environmentalScore Int               @default(0)
+  co2Savings         Float?
+  posts              Post[]
+  mealPlanItems      MealPlanItem[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  user        User       @relation(fields: [userId], references: [id])
+  userId      String
+  type        GoalType
+  targetValue Float
+  periodUnit  PeriodUnit
+  startDate   DateTime   @default(now())
+  endDate     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Recipe {
+  id               String               @id @default(cuid())
+  title            String
+  preference       RecipePreference
+  calories         Int
+  carbohydrates    Float
+  fat              Float
+  protein          Float
+  co2Footprint     Float
+  instructions     String?
+  imageUrl         String?
+  ingredients      RecipeIngredient[]
+  createdBy        User?                @relation("UserRecipes", fields: [createdById], references: [id])
+  createdById      String?
+  shoppingLists    ShoppingList[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+model Ingredient {
+  id                String               @id @default(cuid())
+  name              String               @unique
+  co2PerUnit        Float
+  unit              String
+  recipes           RecipeIngredient[]
+  shoppingListItems ShoppingListItem[]
+}
+
+model RecipeIngredient {
+  id           String     @id @default(cuid())
+  recipe       Recipe     @relation(fields: [recipeId], references: [id])
+  recipeId     String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId String
+  amount       Float
+}
+
+model WaterIntake {
+  id       String   @id @default(cuid())
+  user     User     @relation(fields: [userId], references: [id])
+  userId   String
+  amountMl Int
+  date     DateTime
+}
+
+model WeightEntry {
+  id       String   @id @default(cuid())
+  user     User     @relation(fields: [userId], references: [id])
+  userId   String
+  weightKg Float
+  date     DateTime
+}
+
+model Post {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  meal      Meal?     @relation(fields: [mealId], references: [id])
+  mealId    String?
+  content   String?
+  likes     Like[]
+  comments  Comment[]
+  createdAt DateTime  @default(now())
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    String
+  createdAt DateTime @default(now())
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Challenge {
+  id             String           @id @default(cuid())
+  title          String
+  description    String?
+  badgeType      BadgeType?
+  participations UserChallenge[]
+  startDate      DateTime         @default(now())
+  endDate        DateTime?
+  createdAt      DateTime         @default(now())
+}
+
+model UserChallenge {
+  id           String          @id @default(cuid())
+  user         User            @relation(fields: [userId], references: [id])
+  userId       String
+  challenge    Challenge       @relation(fields: [challengeId], references: [id])
+  challengeId  String
+  status       ChallengeStatus @default(PENDING)
+  progress     Float?
+  joinedAt     DateTime        @default(now())
+  completedAt  DateTime?
+}
+
+model Badge {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  type      BadgeType
+  awardedAt DateTime @default(now())
+}
+
+model ShoppingList {
+  id        String             @id @default(cuid())
+  user      User               @relation(fields: [userId], references: [id])
+  userId    String
+  recipe    Recipe?            @relation(fields: [recipeId], references: [id])
+  recipeId  String?
+  items     ShoppingListItem[]
+  createdAt DateTime           @default(now())
+}
+
+model ShoppingListItem {
+  id            String         @id @default(cuid())
+  shoppingList  ShoppingList   @relation(fields: [listId], references: [id])
+  listId        String
+  ingredient    Ingredient     @relation(fields: [ingredientId], references: [id])
+  ingredientId  String
+  amount        Float
+}
+
+model Tip {
+  id        String    @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model FitnessAccount {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  provider     String
+  externalId   String   @unique
+  accessToken  String
+  refreshToken String?
+  connectedAt  DateTime @default(now())
+}
+
+model MealPlan {
+  id        String         @id @default(cuid())
+  user      User           @relation(fields: [userId], references: [id])
+  userId    String
+  startDate DateTime
+  endDate   DateTime
+  items     MealPlanItem[]
+}
+
+model MealPlanItem {
+  id        String      @id @default(cuid())
+  plan      MealPlan    @relation(fields: [planId], references: [id])
+  planId    String
+  meal      Meal        @relation(fields: [mealId], references: [id])
+  mealId    String
+  date      DateTime
+}
+
+model EducationalContent {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
