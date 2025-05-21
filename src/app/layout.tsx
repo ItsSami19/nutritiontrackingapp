@@ -1,19 +1,18 @@
-import type { Metadata } from "next";
+'use client';
 
-export const metadata: Metadata = {
-  title: "NutritiontrackingAPP",
-  description:
-    "NutritiontrackingAPP is a web application that helps you track your nutrition and fitness goals.",
-};
+import Navbar from './components/navbar';
+import { CssBaseline, Container } from '@mui/material';
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <CssBaseline />
+        <Navbar />
+        <Container sx={{ mt: 4 }}>
+          {children}
+        </Container>
+      </body>
     </html>
   );
 }
