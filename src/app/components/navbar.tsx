@@ -7,61 +7,78 @@ import {
   IconButton,
   Button,
   Box,
-  Tabs,
   Tab,
+  Tabs,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function Navbar() {
-  const [tabValue, setTabValue] = useState(0);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const handleChange = (_: any, newValue: number) => {
-    setTabValue(newValue);
+  const tabPaths = ['/tracking', '/meals', '/statistics'];
+  const currentTab = tabPaths.includes(pathname) ? pathname : false;
+
+  const handleTabChange = (_: any, newValue: string) => {
+    router.push(newValue);
+  };
+
+  const handleNotificationsClick = () => {
+    router.push('/notifications'); // Beispielseite für Benachrichtigungen
+  };
+
+  const handleLogoutClick = () => {
+    // Hier ggf. Auth-Daten löschen (localStorage, Cookies etc.)
+    router.push('/login'); // Zur Login-Seite navigieren
   };
 
   return (
     <AppBar
       position="static"
-      sx={{ 
-        flexDirection: 'column', 
-        alignItems: 'stretch', 
-        backgroundColor: '#000000'  // Schwarz
+      sx={{
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        backgroundColor: '#000000', // schwarz
       }}
     >
-      {/* Obere Toolbar mit Titel und Buttons */}
+      {/* Oberer Bereich mit Titel und Buttons */}
       <Toolbar sx={{ justifyContent: 'space-between', width: '100%' }}>
         <Typography variant="h6" fontWeight="bold" color="inherit">
           Nutrition Tracker
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton color="inherit" aria-label="notifications">
+          <IconButton
+            color="inherit"
+            aria-label="notifications"
+            onClick={handleNotificationsClick}
+          >
             <NotificationsIcon />
           </IconButton>
           <Button
             color="inherit"
             variant="outlined"
             startIcon={<LogoutIcon />}
+            onClick={handleLogoutClick}
           >
             Logout
           </Button>
         </Box>
       </Toolbar>
 
-      {/* Untere Tabs, linksbündig */}
-      <Box sx={{ px: 2, alignSelf: 'flex-start' }}>
+      {/* Tabs unterhalb linksbündig */}
+      <Box sx={{ px: 2, pb: 1, alignSelf: 'flex-start' }}>
         <Tabs
-          value={tabValue}
-          onChange={handleChange}
+          value={currentTab}
+          onChange={handleTabChange}
           textColor="inherit"
           indicatorColor="secondary"
-          sx={{ minHeight: 36 }}
         >
-          <Tab label="Tracking" />
-          <Tab label="Meals" />
-          <Tab label="Statistics" />
+          <Tab label="Tracking" value="/tracking" />
+          <Tab label="Meals" value="/meals" />
+          <Tab label="Statistics" value="/statistics" />
         </Tabs>
       </Box>
     </AppBar>
