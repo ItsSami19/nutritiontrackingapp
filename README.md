@@ -40,9 +40,14 @@ Definition of Done (DoD)
 A task is considered **done** when the following criteria are met:
 
 [ ] Code has been pushed to the ‘main’ branch.
+
 [ ] Vercel deployment was successful.
+
 [ ] The application runs without crashes or major errors.
+
 [ ] The implemented functionality works as intended.
+
 [ ] There are no obvious bugs.
+
 
 > This DoD applies to all features, bug fixes, and code changes in the project.
