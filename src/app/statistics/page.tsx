@@ -1,38 +1,181 @@
 'use client';
 
-import { Box, Button, Typography, Paper, Stack } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Box, Typography, Paper } from '@mui/material';
+import { PieChart, Pie, Cell, Legend } from 'recharts';
+import axios from 'axios';
+
+const MACRO_COLORS = ['#FF6384', '#FFCE56', '#36A2EB'];
+const MEAL_TYPE_COLORS = ['#4CAF50', '#FFCE56', '#FF6384'];
+const WATER_COLORS = ['#36A2EB', '#E0E0E0'];
+
+const CHART_SIZE = 250;
+const OUTER_RADIUS = 80;
+const LEGEND_HEIGHT = 36;
+const CHART_CONTAINER_HEIGHT = CHART_SIZE + LEGEND_HEIGHT + 60;
+
+const renderMacroPieChart = (protein: number, fat: number, carbs: number) => {
+  const data = [
+    { name: 'Protein', value: protein },
+    { name: 'Fat', value: fat },
+    { name: 'Carbs', value: carbs },
+  ];
+
+  return (
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="space-between"
+      height={CHART_CONTAINER_HEIGHT}
+      minWidth={CHART_SIZE}
+      p={1}
+    >
+      <PieChart width={CHART_SIZE} height={CHART_SIZE}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          innerRadius={40}
+          outerRadius={OUTER_RADIUS}
+          label
+        >
+          {data.map((_, index) => (
+            <Cell key={`macro-cell-${index}`} fill={MACRO_COLORS[index]} />
+          ))}
+        </Pie>
+        <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
+      </PieChart>
+      <Typography variant="h6" mt={1}>Macronutrients</Typography>
+    </Box>
+  );
+};
+
+const renderComparisonPie = (
+  label: string,
+  value: number,
+  colorScheme: string[],
+  secondLabel: string
+) => {
+  const data = [
+    { name: label, value },
+    { name: secondLabel, value: 100 - value },
+  ];
+
+  return (
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="space-between"
+      height={CHART_CONTAINER_HEIGHT}
+      minWidth={CHART_SIZE}
+      p={1}
+    >
+      <PieChart width={CHART_SIZE} height={CHART_SIZE}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          innerRadius={40}
+          outerRadius={OUTER_RADIUS}
+          label
+        >
+          {data.map((_, index) => (
+            <Cell key={`comparison-cell-${index}`} fill={colorScheme[index]} />
+          ))}
+        </Pie>
+        <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
+      </PieChart>
+      <Typography variant="h6" mt={1}>{label}</Typography>
+    </Box>
+  );
+};
+
+const renderMealTypePieChart = (
+  vegan: number,
+  vegetarian: number,
+  meat: number
+) => {
+  const data = [
+    { name: 'Vegan', value: vegan },
+    { name: 'Vegetarian', value: vegetarian },
+    { name: 'Meat', value: meat },
+  ];
+
+  return (
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="space-between"
+      height={CHART_CONTAINER_HEIGHT}
+      minWidth={CHART_SIZE}
+      p={1}
+    >
+      <PieChart width={CHART_SIZE} height={CHART_SIZE}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          innerRadius={40}
+          outerRadius={OUTER_RADIUS}
+          label
+        >
+          {data.map((_, index) => (
+            <Cell key={`mealtype-cell-${index}`} fill={MEAL_TYPE_COLORS[index]} />
+          ))}
+        </Pie>
+        <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
+      </PieChart>
+      <Typography variant="h6" mt={1}>Meal Types</Typography>
+    </Box>
+  );
+};
 
 export default function Home() {
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await axios.get('/api/statistics', {
+          params: { userId: '1' },
+        });
+        setStats(response.data);
+      } catch (error) {
+        console.error('Error fetching statistics:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (!stats) return null;
+
   return (
-    <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-      <Paper elevation={2} sx={{ padding: 4, width: 500 }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
-          Your Nutrition Overview
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="flex-start"
+      minHeight="100vh"
+      p={2}
+    >
+      <Paper elevation={1} sx={{ padding: 2, width: '100%' , display: 'block' }}>
+        <Typography variant="h4" gutterBottom align="center" mb={4}>
+          Your Nutrition Statistics
         </Typography>
 
-        <Stack spacing={2} mb={4}>
-          <Box display="flex" justifyContent="space-between">
-            <Typography>Calories last day/week/month</Typography>
-            <Typography>2000kcal / 14000kcal / 56000kcal</Typography>
-          </Box>
-          <Box display="flex" justifyContent="space-between">
-            <Typography>Avg. Meal Rating</Typography>
-            <Typography>Low</Typography>
-          </Box>
-          <Box display="flex" justifyContent="space-between">
-            <Typography># of Meat-free Meals</Typography>
-            <Typography>4</Typography>
-          </Box>
-          <Box display="flex" justifyContent="space-between">
-            <Typography>CO2-Savings</Typography>
-            <Typography>200kg</Typography>
-          </Box>
-        </Stack>
-
-        <Box display="flex" justifyContent="center">
-          <Button variant="contained" style={{backgroundColor: 'black', color: 'white'}}>
-            Set Goal
-          </Button>
+        <Box display="flex" flexWrap="wrap" justifyContent="center" gap={6}>
+          {renderMacroPieChart(stats.proteinPercentage, stats.fatPercentage, stats.carbsPercentage)}
+          {renderMealTypePieChart(stats.veganPercentage, stats.vegetarianPercentage, stats.meatPercentage)}
+          {renderComparisonPie('Water Goal', stats.waterPercentage, WATER_COLORS, 'Remaining')}
         </Box>
       </Paper>
     </Box>
