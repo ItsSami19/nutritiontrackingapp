@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   AppBar,
@@ -9,47 +9,53 @@ import {
   Box,
   Tab,
   Tabs,
-} from '@mui/material';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import LogoutIcon from '@mui/icons-material/Logout';
-import { useRouter, usePathname } from 'next/navigation';
+} from "@mui/material";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import LogoutIcon from "@mui/icons-material/Logout";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
-  const tabPaths = ['/tracking', '/meals', '/statistics'];
+  const tabPaths = ["/tracking", "/meals", "/statistics"];
   const currentTab = tabPaths.includes(pathname) ? pathname : false;
 
-  const handleTabChange = (_: any, newValue: string) => {
+  const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     router.push(newValue);
   };
 
   const handleNotificationsClick = () => {
-    router.push('/notifications'); // Beispielseite für Benachrichtigungen
+    router.push("/notifications");
   };
 
-  const handleLogoutClick = () => {
-    // Hier ggf. Auth-Daten löschen (localStorage, Cookies etc.)
-    router.push('/login'); // Zur Login-Seite navigieren
+  const handleLogoutClick = async () => {
+    const { error } = await signOut();
+    if (error) {
+      console.error("Logout failed:", error.message);
+      alert("Logout fehlgeschlagen. Schau in die Konsole.");
+    } else {
+      router.push("/login");
+    }
   };
 
   return (
     <AppBar
       position="static"
       sx={{
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        backgroundColor: '#000000', // schwarz
+        flexDirection: "column",
+        alignItems: "stretch",
+        backgroundColor: "#000000",
       }}
     >
-      {/* Oberer Bereich mit Titel und Buttons */}
-      <Toolbar sx={{ justifyContent: 'space-between', width: '100%' }}>
+      <Toolbar sx={{ justifyContent: "space-between", width: "100%" }}>
         <Typography variant="h6" fontWeight="bold" color="inherit">
           Nutrition Tracker
         </Typography>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <IconButton
             color="inherit"
             aria-label="notifications"
@@ -57,19 +63,20 @@ export default function Navbar() {
           >
             <NotificationsIcon />
           </IconButton>
-          <Button
-            color="inherit"
-            variant="outlined"
-            startIcon={<LogoutIcon />}
-            onClick={handleLogoutClick}
-          >
-            Logout
-          </Button>
+          {user && (
+            <Button
+              color="inherit"
+              variant="outlined"
+              startIcon={<LogoutIcon />}
+              onClick={handleLogoutClick}
+            >
+              Logout
+            </Button>
+          )}
         </Box>
       </Toolbar>
 
-      {/* Tabs unterhalb linksbündig */}
-      <Box sx={{ px: 2, pb: 1, alignSelf: 'flex-start' }}>
+      <Box sx={{ px: 2, pb: 1, alignSelf: "flex-start" }}>
         <Tabs
           value={currentTab}
           onChange={handleTabChange}
