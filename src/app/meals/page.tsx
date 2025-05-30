@@ -10,8 +10,52 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
+import React, { useState, useEffect } from 'react';
 
-export default function Home() {
+interface Meals {
+  title: string;
+  calories: number;
+  carbohydrates: number;
+  fat: number;
+  protein: number;
+  containsMeat: boolean;
+  vegetarian: boolean;
+  vegan: boolean;
+  imageUrl: string;
+  rating: number;
+  environmentalScore: number;
+  co2Savings: number;
+}
+
+export default function Page() {
+  const [meals, setMeals] = useState<Meals[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchData = async() => {
+      try {
+        const res = await fetch('/api/getMeals');
+        if(!res.ok) throw new Error('Not authorized or error fetching data');
+
+        const data = await res.json();
+
+        setMeals(data);
+      } catch (err: any) {
+        console.error(err);
+        setError('Error loading data');
+      }
+    };
+    fetchData();
+  }, []);
+  if (error) {
+    return <Typography color="error">{error}</Typography>;
+  }
+  if(meals.length === 0 && !error) {
+    return <Typography>Loading...</Typography>
+  }
+
+
+
   return (
     <Box
       display="flex"
@@ -44,239 +88,104 @@ export default function Home() {
           {
             // Meal Card
           }
-          <Paper
-            elevation={1}
-            sx={{ padding: 2, width: "100%", display: "flex" }}
-          >
-            <CardMedia
-              component="img"
-              image="https://takethemameal.com/files_images_v2/stam.jpg"
-              alt="Nice Meal"
-              sx={{ width: 180, height: 180 }}
-            />
-            <Box
-              sx={{ display: "flex", flexDirection: "column", flex: 1, pl: 3 }}
+
+          {meals.map((meal, index) => (
+            <Paper
+              key={meal.title}
+              elevation={1}
+              sx={{ padding: 2, width: "100%", display: "flex" }}
             >
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="h5" fontWeight="bold">
-                    Nice Meal 1
-                  </Typography>
-                  <Typography variant="h5" fontWeight="bold">
-                    ·
-                  </Typography>
-                  <Typography variant="h6">5/5 Stars</Typography>
-                  <Typography variant="h5" fontWeight="bold">
-                    ·
-                  </Typography>
-                  <Typography variant="h6">🌳-Score: Low</Typography>
-                </Box>
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <Button
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "black",
-                      color: "white",
-                      height: "40px",
-                      width: "90px",
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "black",
-                      color: "white",
-                      height: "40px",
-                      width: "90px",
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </Box>
-              </Box>
-              <Box
-                sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}
-              >
-                <Box>
-                  <Typography variant="h6">187 kcal</Typography>
-                  <Typography variant="h6">7295g Carbohydrates</Typography>
-                  <Typography variant="h6">1467g Protein</Typography>
-                  <Typography variant="h6">3141g Fat</Typography>
-                </Box>
+              <CardMedia
+                component="img"
+                image={meal.imageUrl}
+                alt={meal.title}
+                sx={{ width: 180, height: 180 }}
+              />
+              <Box sx={{ display: "flex", flexDirection: "column", flex: 1, pl: 3 }}>
                 <Box
                   sx={{
                     display: "flex",
-                    flexDirection: "column",
-                    pl: 5,
-                    pr: 17,
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked
-                        size="small"
-                        sx={{
-                          color: "black",
-                          "&.Mui-checked": { color: "black" },
-                        }}
-                      />
-                    }
-                    label={<Typography variant="h6">Contains Meat</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        size="small"
-                        sx={{
-                          color: "black",
-                          "&.Mui-checked": { color: "black" },
-                        }}
-                      />
-                    }
-                    label={<Typography variant="h6">Vegetarian</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        size="small"
-                        sx={{
-                          color: "black",
-                          "&.Mui-checked": { color: "black" },
-                        }}
-                      />
-                    }
-                    label={<Typography variant="h6">Vegan</Typography>}
-                  />
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="h5" fontWeight="bold">
+                      {meal.title}
+                    </Typography>
+                    <Typography variant="h5" fontWeight="bold">·</Typography>
+                    <Typography variant="h6">{meal.rating}/5 Stars</Typography>
+                    <Typography variant="h5" fontWeight="bold">·</Typography>
+                    <Typography variant="h6">🌳-Score: {meal.environmentalScore == 3 ? "High" : meal.environmentalScore == 2 ? "Medium" : "Low"}</Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", gap: 2 }}>
+                    <Button
+                      variant="contained"
+                      sx={{
+                        backgroundColor: "black",
+                        color: "white",
+                        height: "40px",
+                        width: "90px",
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="contained"
+                      sx={{
+                        backgroundColor: "black",
+                        color: "white",
+                        height: "40px",
+                        width: "90px",
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </Box>
+                </Box>
+                <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
+                  <Box>
+                    <Typography variant="h6">{meal.calories} kcal</Typography>
+                    <Typography variant="h6">{meal.carbohydrates}g Carbohydrates</Typography>
+                    <Typography variant="h6">{meal.protein}g Protein</Typography>
+                    <Typography variant="h6">{meal.fat}g Fat</Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", flexDirection: "column", pl: 5, pr: 17 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={meal.containsMeat}
+                          size="small"
+                          sx={{ color: "black", "&.Mui-checked": { color: "black" } }}
+                        />
+                      }
+                      label={<Typography variant="h6">Contains Meat</Typography>}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={meal.vegetarian}
+                          size="small"
+                          sx={{ color: "black", "&.Mui-checked": { color: "black" } }}
+                        />
+                      }
+                      label={<Typography variant="h6">Vegetarian</Typography>}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={meal.vegan}
+                          size="small"
+                          sx={{ color: "black", "&.Mui-checked": { color: "black" } }}
+                        />
+                      }
+                      label={<Typography variant="h6">Vegan</Typography>}
+                    />
+                  </Box>
                 </Box>
               </Box>
-            </Box>
-          </Paper>
-          <Paper
-            elevation={1}
-            sx={{ padding: 2, width: "100%", display: "flex" }}
-          >
-            <CardMedia
-              component="img"
-              image="https://feiertaeglich.de/wp-content/uploads/2020/01/Brokkoli-Dinkel-Power-Bowl-mit-cremigem-Cashewdressing_q1.jpg"
-              alt="Nice Meal"
-              sx={{ width: 180, height: 180 }}
-            />
-            <Box
-              sx={{ display: "flex", flexDirection: "column", flex: 1, pl: 3 }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="h5" fontWeight="bold">
-                    Nice Meal 2
-                  </Typography>
-                  <Typography variant="h5" fontWeight="bold">
-                    ·
-                  </Typography>
-                  <Typography variant="h6">4/5 Stars</Typography>
-                  <Typography variant="h5" fontWeight="bold">
-                    ·
-                  </Typography>
-                  <Typography variant="h6">🌳-Score: High</Typography>
-                </Box>
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <Button
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "black",
-                      color: "white",
-                      height: "40px",
-                      width: "90px",
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "black",
-                      color: "white",
-                      height: "40px",
-                      width: "90px",
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </Box>
-              </Box>
-              <Box
-                sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}
-              >
-                <Box>
-                  <Typography variant="h6">187 kcal</Typography>
-                  <Typography variant="h6">7295g Carbohydrates</Typography>
-                  <Typography variant="h6">1467g Protein</Typography>
-                  <Typography variant="h6">3141g Fat</Typography>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    pl: 5,
-                    pr: 17,
-                  }}
-                >
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        size="small"
-                        sx={{
-                          color: "black",
-                          "&.Mui-checked": { color: "black" },
-                        }}
-                      />
-                    }
-                    label={<Typography variant="h6">Contains Meat</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked
-                        size="small"
-                        sx={{
-                          color: "black",
-                          "&.Mui-checked": { color: "black" },
-                        }}
-                      />
-                    }
-                    label={<Typography variant="h6">Vegetarian</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked
-                        size="small"
-                        sx={{
-                          color: "black",
-                          "&.Mui-checked": { color: "black" },
-                        }}
-                      />
-                    }
-                    label={<Typography variant="h6">Vegan</Typography>}
-                  />
-                </Box>
-              </Box>
-            </Box>
-          </Paper>
+            </Paper>
+          ))}
         </Stack>
       </Paper>
     </Box>
