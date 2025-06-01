@@ -20,6 +20,12 @@ export default function Navbar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
 
+  // Pfade, auf denen die Navbar nicht angezeigt werden soll
+  const hiddenPaths = ["/login", "/signup"];
+  if (hiddenPaths.includes(pathname)) {
+    return null;
+  }
+
   const tabPaths = ["/tracking", "/meals", "/statistics"];
   const currentTab = tabPaths.includes(pathname) ? pathname : false;
 
