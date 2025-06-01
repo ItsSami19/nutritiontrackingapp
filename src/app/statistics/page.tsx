@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { Box, Typography, Paper } from '@mui/material';
 import { PieChart, Pie, Cell, Legend } from 'recharts';
 import axios from 'axios';
 
 const MACRO_COLORS = ['#FF6384', '#FFCE56', '#36A2EB'];
 const MEAL_TYPE_COLORS = ['#4CAF50', '#FFCE56', '#FF6384'];
-const WATER_COLORS = ['#36A2EB', '#E0E0E0'];
 
 const CHART_SIZE = 250;
 const OUTER_RADIUS = 80;
@@ -49,49 +49,6 @@ const renderMacroPieChart = (protein: number, fat: number, carbs: number) => {
         <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
       </PieChart>
       <Typography variant="h6" mt={1}>Macronutrients</Typography>
-    </Box>
-  );
-};
-
-const renderComparisonPie = (
-  label: string,
-  value: number,
-  colorScheme: string[],
-  secondLabel: string
-) => {
-  const data = [
-    { name: label, value },
-    { name: secondLabel, value: 100 - value },
-  ];
-
-  return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="space-between"
-      height={CHART_CONTAINER_HEIGHT}
-      minWidth={CHART_SIZE}
-      p={1}
-    >
-      <PieChart width={CHART_SIZE} height={CHART_SIZE}>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          innerRadius={40}
-          outerRadius={OUTER_RADIUS}
-          label
-        >
-          {data.map((_, index) => (
-            <Cell key={`comparison-cell-${index}`} fill={colorScheme[index]} />
-          ))}
-        </Pie>
-        <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
-      </PieChart>
-      <Typography variant="h6" mt={1}>{label}</Typography>
     </Box>
   );
 };
@@ -140,13 +97,16 @@ const renderMealTypePieChart = (
 };
 
 export default function Home() {
+  const { user, session } = useAuth();
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
+      if (!user || !session) return;
+
       try {
         const response = await axios.get('/api/statistics', {
-          params: { userId: '1' },
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
         setStats(response.data);
       } catch (error) {
@@ -154,8 +114,10 @@ export default function Home() {
       }
     };
 
-    fetchStats();
-  }, []);
+    if (typeof window !== 'undefined') {
+      fetchStats();
+    }
+  }, [user, session]);
 
   if (!stats) return null;
 
@@ -167,15 +129,24 @@ export default function Home() {
       minHeight="100vh"
       p={2}
     >
-      <Paper elevation={1} sx={{ padding: 2, width: '100%' , display: 'block' }}>
+      <Paper elevation={1} sx={{ padding: 2, width: '100%', display: 'block' }}>
         <Typography variant="h4" gutterBottom align="center" mb={4}>
           Your Nutrition Statistics
         </Typography>
 
-        <Box display="flex" flexWrap="wrap" justifyContent="center" gap={6}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={6}>
+          {/* Diagramme */}
           {renderMacroPieChart(stats.proteinPercentage, stats.fatPercentage, stats.carbsPercentage)}
           {renderMealTypePieChart(stats.veganPercentage, stats.vegetarianPercentage, stats.meatPercentage)}
-          {renderComparisonPie('Water Goal', stats.waterPercentage, WATER_COLORS, 'Remaining')}
+        </Box>
+
+        {/* Statistiken */}
+        <Box mt={4} display="flex" flexDirection="column" alignItems="center" gap={2}>
+          <Typography variant="h6">Total Calories: {stats.totalCalories}</Typography>
+          <Typography variant="h6">Total CO2 Savings: {stats.totalCO2Savings} kg</Typography>
+          <Typography variant="h6">Average Meal Rating: {stats.averageRating}</Typography>
+          <Typography variant="h6">Total Water Intake: {stats.totalWaterIntakes} ml</Typography>
+          <Typography variant="h6">Latest Weight: {stats.latestWeight ? stats.latestWeight.weightKg + " kg" : "No data"}</Typography>
         </Box>
       </Paper>
     </Box>
