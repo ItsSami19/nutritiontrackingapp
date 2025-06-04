@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography, Card, CardContent } from '@mui/material';
 import { PieChart, Pie, Cell, Legend } from 'recharts';
 import axios from 'axios';
 
@@ -31,6 +31,7 @@ const renderMacroPieChart = (protein: number, fat: number, carbs: number) => {
       minWidth={CHART_SIZE}
       p={1}
     >
+      <Typography variant="h6" mb={1} align="center">Macronutrients</Typography>
       <PieChart width={CHART_SIZE} height={CHART_SIZE}>
         <Pie
           data={data}
@@ -48,16 +49,11 @@ const renderMacroPieChart = (protein: number, fat: number, carbs: number) => {
         </Pie>
         <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
       </PieChart>
-      <Typography variant="h6" mt={1}>Macronutrients</Typography>
     </Box>
   );
 };
 
-const renderMealTypePieChart = (
-  vegan: number,
-  vegetarian: number,
-  meat: number
-) => {
+const renderMealTypePieChart = (vegan: number, vegetarian: number, meat: number) => {
   const data = [
     { name: 'Vegan', value: vegan },
     { name: 'Vegetarian', value: vegetarian },
@@ -74,6 +70,7 @@ const renderMealTypePieChart = (
       minWidth={CHART_SIZE}
       p={1}
     >
+      <Typography variant="h6" mb={1} align="center">Meal Types</Typography> {/* Überschrift oben */}
       <PieChart width={CHART_SIZE} height={CHART_SIZE}>
         <Pie
           data={data}
@@ -91,7 +88,6 @@ const renderMealTypePieChart = (
         </Pie>
         <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
       </PieChart>
-      <Typography variant="h6" mt={1}>Meal Types</Typography>
     </Box>
   );
 };
@@ -99,6 +95,20 @@ const renderMealTypePieChart = (
 export default function Home() {
   const { user, session } = useAuth();
   const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await axios.get('/api/statistics');
+        setStats(response.data);
+      } catch (error) {
+        console.error('Error fetching statistics:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -124,31 +134,64 @@ export default function Home() {
   return (
     <Box
       display="flex"
+      flexDirection={{ xs: 'column', sm: 'row' }}
       justifyContent="center"
       alignItems="flex-start"
-      minHeight="100vh"
-      p={2}
+      gap={4}
+      flexWrap="wrap"
     >
-      <Paper elevation={1} sx={{ padding: 2, width: '100%', display: 'block' }}>
-        <Typography variant="h4" gutterBottom align="center" mb={4}>
-          Your Nutrition Statistics
-        </Typography>
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        gap={6}
+        minWidth={{ xs: 'auto', sm: CHART_SIZE + 32 }}
+        flex={1}
+      >
+        {renderMacroPieChart(stats.proteinPercentage, stats.fatPercentage, stats.carbsPercentage)}
+        {renderMealTypePieChart(stats.veganPercentage, stats.vegetarianPercentage, stats.meatPercentage)}
+      </Box>
 
-        <Box display="flex" flexDirection="column" alignItems="center" gap={6}>
-          {/* Diagramme */}
-          {renderMacroPieChart(stats.proteinPercentage, stats.fatPercentage, stats.carbsPercentage)}
-          {renderMealTypePieChart(stats.veganPercentage, stats.vegetarianPercentage, stats.meatPercentage)}
-        </Box>
-
-        {/* Statistiken */}
-        <Box mt={4} display="flex" flexDirection="column" alignItems="center" gap={2}>
-          <Typography variant="h6">Total Calories: {stats.totalCalories}</Typography>
-          <Typography variant="h6">Total CO2 Savings: {stats.totalCO2Savings} kg</Typography>
-          <Typography variant="h6">Average Meal Rating: {stats.averageRating}</Typography>
-          <Typography variant="h6">Total Water Intake: {stats.totalWaterIntakes} ml</Typography>
-          <Typography variant="h6">Latest Weight: {stats.latestWeight ? stats.latestWeight.weightKg + " kg" : "No data"}</Typography>
-        </Box>
-      </Paper>
+      <Box
+        display="grid"
+        gridTemplateColumns={{ xs: '1fr', sm: '1fr' }}
+        gap={3}
+        minWidth={{ xs: 'auto', sm: 300 }}
+        flex={1}
+      >
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle1">Total Calories</Typography>
+            <Typography variant="h6">{stats.totalCalories}</Typography>
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle1">CO₂ Savings</Typography>
+            <Typography variant="h6">{stats.totalCO2Savings} kg</Typography>
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle1">Avg. Meal Rating</Typography>
+            <Typography variant="h6">{stats.averageRating}</Typography>
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle1">Water Intake</Typography>
+            <Typography variant="h6">{stats.totalWaterIntakes} ml</Typography>
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle1">Latest Weight</Typography>
+            <Typography variant="h6">
+              {stats.latestWeight ? `${stats.latestWeight.weightKg} kg` : 'No data'}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 }
