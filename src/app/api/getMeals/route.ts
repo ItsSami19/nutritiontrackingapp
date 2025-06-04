@@ -29,9 +29,9 @@ export async function GET() {
     });
     return NextResponse.json(meals);
   } catch (error) {
-    console.error("Error fetching vacation summary:", error);
+    console.error("Prisma‐Error auf Vercel:", error);
     return NextResponse.json(
-      { error: "Failed to fetch meals" },
+      { error: (error as Error).message },
       { status: 500 }
     );
   }

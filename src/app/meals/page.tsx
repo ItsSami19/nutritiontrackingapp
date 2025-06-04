@@ -10,7 +10,7 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface Meals {
   title: string;
@@ -28,21 +28,21 @@ interface Meals {
 }
 
 export default function Page() {
-  const [meals, setMeals] = useState<Meals[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [meals, setMeals] = useState<Meals[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async() => {
+    const fetchData = async () => {
       try {
-        const res = await fetch('/api/getMeals');
-        if(!res.ok) throw new Error('Not authorized or error fetching data');
+        const res = await fetch("/api/getMeals");
+        if (!res.ok) throw new Error("Not authorized or error fetching data");
 
         const data = await res.json();
 
         setMeals(data);
-      } catch (err: any) {
-        console.error(err);
-        setError('Error loading data');
+      } catch {
+        console.error();
+        setError("Error loading data");
       }
     };
     fetchData();
@@ -50,11 +50,9 @@ export default function Page() {
   if (error) {
     return <Typography color="error">{error}</Typography>;
   }
-  if(meals.length === 0 && !error) {
-    return <Typography>Loading...</Typography>
+  if (meals.length === 0 && !error) {
+    return <Typography>NO MEALS YET!!</Typography>;
   }
-
-
 
   return (
     <Box
@@ -89,7 +87,7 @@ export default function Page() {
             // Meal Card
           }
 
-          {meals.map((meal, index) => (
+          {meals.map((meal) => (
             <Paper
               key={meal.title}
               elevation={1}
@@ -101,7 +99,14 @@ export default function Page() {
                 alt={meal.title}
                 sx={{ width: 180, height: 180 }}
               />
-              <Box sx={{ display: "flex", flexDirection: "column", flex: 1, pl: 3 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  flex: 1,
+                  pl: 3,
+                }}
+              >
                 <Box
                   sx={{
                     display: "flex",
@@ -113,10 +118,21 @@ export default function Page() {
                     <Typography variant="h5" fontWeight="bold">
                       {meal.title}
                     </Typography>
-                    <Typography variant="h5" fontWeight="bold">·</Typography>
+                    <Typography variant="h5" fontWeight="bold">
+                      ·
+                    </Typography>
                     <Typography variant="h6">{meal.rating}/5 Stars</Typography>
-                    <Typography variant="h5" fontWeight="bold">·</Typography>
-                    <Typography variant="h6">🌳-Score: {meal.environmentalScore == 3 ? "High" : meal.environmentalScore == 2 ? "Medium" : "Low"}</Typography>
+                    <Typography variant="h5" fontWeight="bold">
+                      ·
+                    </Typography>
+                    <Typography variant="h6">
+                      🌳-Score:{" "}
+                      {meal.environmentalScore == 3
+                        ? "High"
+                        : meal.environmentalScore == 2
+                        ? "Medium"
+                        : "Low"}
+                    </Typography>
                   </Box>
                   <Box sx={{ display: "flex", gap: 2 }}>
                     <Button
@@ -143,30 +159,55 @@ export default function Page() {
                     </Button>
                   </Box>
                 </Box>
-                <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
+                <Box
+                  sx={{
+                    mt: 2,
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <Box>
                     <Typography variant="h6">{meal.calories} kcal</Typography>
-                    <Typography variant="h6">{meal.carbohydrates}g Carbohydrates</Typography>
-                    <Typography variant="h6">{meal.protein}g Protein</Typography>
+                    <Typography variant="h6">
+                      {meal.carbohydrates}g Carbohydrates
+                    </Typography>
+                    <Typography variant="h6">
+                      {meal.protein}g Protein
+                    </Typography>
                     <Typography variant="h6">{meal.fat}g Fat</Typography>
                   </Box>
-                  <Box sx={{ display: "flex", flexDirection: "column", pl: 5, pr: 17 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      pl: 5,
+                      pr: 17,
+                    }}
+                  >
                     <FormControlLabel
                       control={
                         <Checkbox
                           checked={meal.containsMeat}
                           size="small"
-                          sx={{ color: "black", "&.Mui-checked": { color: "black" } }}
+                          sx={{
+                            color: "black",
+                            "&.Mui-checked": { color: "black" },
+                          }}
                         />
                       }
-                      label={<Typography variant="h6">Contains Meat</Typography>}
+                      label={
+                        <Typography variant="h6">Contains Meat</Typography>
+                      }
                     />
                     <FormControlLabel
                       control={
                         <Checkbox
                           checked={meal.vegetarian}
                           size="small"
-                          sx={{ color: "black", "&.Mui-checked": { color: "black" } }}
+                          sx={{
+                            color: "black",
+                            "&.Mui-checked": { color: "black" },
+                          }}
                         />
                       }
                       label={<Typography variant="h6">Vegetarian</Typography>}
@@ -176,7 +217,10 @@ export default function Page() {
                         <Checkbox
                           checked={meal.vegan}
                           size="small"
-                          sx={{ color: "black", "&.Mui-checked": { color: "black" } }}
+                          sx={{
+                            color: "black",
+                            "&.Mui-checked": { color: "black" },
+                          }}
                         />
                       }
                       label={<Typography variant="h6">Vegan</Typography>}
