@@ -1,6 +1,7 @@
+// context/AuthContext.tsx
 "use client";
 
-import {
+import React, {
   createContext,
   useContext,
   useState,
@@ -42,31 +43,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Initiale Session abfragen
+    // 1. Beim Mount: aktuelle Session abfragen
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
     });
 
-    // Listener für Auth-State-Changes
+    // 2. Listener für Änderungen (Login, Logout, Token-Refresh o. Ä.)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
+    } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
 
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
+  // Signup: erstellt einen neuen Auth-User in auth.users, speichert Session/Token automatisch
   const signUp = (email: string, password: string) =>
     supabase.auth.signUp({ email, password });
 
+  // SignIn: login mit E-Mail + Passwort, Session wird automatisch gesetzt
   const signIn = (email: string, password: string) =>
     supabase.auth.signInWithPassword({ email, password });
 
+  // SignOut: löscht Session
   const signOut = () => supabase.auth.signOut();
 
   return (
@@ -76,4 +82,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Hook, um später überall in deiner App `const { user, session, signIn, ... } = useAuth()` zu nutzen.
 export const useAuth = () => useContext(AuthContext);
