@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { supabase } from "@/lib/supabaseClient";
 
-export async function GET() {
+export async function GET(req: Request) {
   const prisma = new PrismaClient();
-  const userId = "1"; // später dynamisch
 
-  const goal = await prisma.goal.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-  });
+  const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+
+  if (!token) {
+    return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
+  }
+
+  const { data: user, error } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  }
+
+  const userId = user.user.id;
 
   const allMeals = await prisma.meal.findMany({ where: { userId } });
   const totalMealCount = allMeals.length;
@@ -16,8 +25,15 @@ export async function GET() {
   let veganCount = 0;
   let vegetarianCount = 0;
   let meatCount = 0;
+  let totalCalories = 0;
+  let totalCO2Savings = 0;
+  let totalRating = 0;
 
   for (const meal of allMeals) {
+    totalCalories += meal.calories;
+    totalCO2Savings += meal.co2Savings || 0;
+    totalRating += meal.rating;
+
     if (meal.vegan) {
       veganCount++;
     } else if (meal.vegetarian) {
@@ -30,9 +46,7 @@ export async function GET() {
   const veganPercentage =
     totalMealCount > 0 ? Math.round((veganCount / totalMealCount) * 100) : 0;
   const vegetarianPercentage =
-    totalMealCount > 0
-      ? Math.round((vegetarianCount / totalMealCount) * 100)
-      : 0;
+    totalMealCount > 0 ? Math.round((vegetarianCount / totalMealCount) * 100) : 0;
   const meatPercentage =
     totalMealCount > 0 ? Math.round((meatCount / totalMealCount) * 100) : 0;
 
@@ -57,17 +71,22 @@ export async function GET() {
   const carbsPercentage =
     macroSum > 0 ? Math.round((totalCarbs / macroSum) * 100) : 0;
 
-  const waterGoal = goal?.type === "CALORIE_INTAKE" ? goal.targetValue : 2000;
-  const waterTotal = await prisma.waterIntake.aggregate({
+  const weightEntries = await prisma.weightEntry.findMany({
     where: { userId },
-    _sum: { amountMl: true },
+    orderBy: { date: 'asc' },
+  });
+  
+  const totalWeightEntries = weightEntries.length;
+  const latestWeight = totalWeightEntries > 0 ? weightEntries[totalWeightEntries - 1] : null;
+
+  const waterIntakes = await prisma.waterIntake.findMany({
+    where: { userId },
+    orderBy: { date: 'asc' },
   });
 
-  const currentWater = waterTotal._sum.amountMl ?? 0;
-  const waterPercentage = Math.min(
-    Math.round((currentWater / waterGoal) * 100),
-    100
-  );
+  const totalWaterIntakes = waterIntakes.reduce((acc, entry) => acc + entry.amountMl, 0);
+
+  const averageRating = totalMealCount > 0 ? totalRating / totalMealCount : 0;
 
   return NextResponse.json({
     veganPercentage,
@@ -76,6 +95,10 @@ export async function GET() {
     proteinPercentage,
     fatPercentage,
     carbsPercentage,
-    waterPercentage,
+    totalCalories,
+    totalCO2Savings,
+    averageRating,
+    latestWeight,
+    totalWaterIntakes,
   });
 }
