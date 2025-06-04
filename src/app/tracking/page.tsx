@@ -1,288 +1,326 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from "react";
-import { Box, Button, Typography, Paper, Stack, TextField, CardMedia, Checkbox, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogActions, FormGroup } from '@mui/material';
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  Typography,
+  Paper,
+  Stack,
+  Card,
+  CardContent,
+  CardMedia,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  IconButton,
+} from "@mui/material";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { getAccessToken } from "@/lib/user";
 
+interface MealTemplate {
+  id: string;
+  title: string;
+  calories: number;
+  carbohydrates: number;
+  protein: number;
+  fat: number;
+  containsMeat: boolean;
+  vegetarian: boolean;
+  vegan: boolean;
+}
 
-export default function Home() {
-    const [date, setDate] = useState<Date | null>(null);
-    const [meals, setMeals] = useState<any[]>([]);
+interface TrackedMeal {
+  id: string;
+  date: string;
+  meal: MealTemplate;
+}
 
-    const [openAddDialog, setOpenAddDialog] = useState(false);
-    const [newMealTitle, setNewMealTitle] = useState("");
-    const [newMealCalories, setNewMealCalories] = useState<number | "">("");
-    const [newMealCarbohydrates, setNewMealCarbohydrates] = useState<number | "">("");
-    const [newMealProtein, setNewMealProtein] = useState<number | "">("");
-    const [newMealFat, setNewMealFat] = useState<number | "">("");
-    const [newMealType, setNewMealType] = useState<'meat' | 'vegetarian' | 'vegan'>('meat');
+export default function Page() {
+  const [date, setDate] = useState<Date | null>(null);
+  const [trackedMeals, setTrackedMeals] = useState<TrackedMeal[]>([]);
+  const [mealPool, setMealPool] = useState<MealTemplate[]>([]);
+  const [loadingPool, setLoadingPool] = useState(false);
+  const [openSelectDialog, setOpenSelectDialog] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        setDate(new Date());
-    }, []);
+  // 1. Beim Mounten auf heute setzen
+  useEffect(() => {
+    setDate(new Date());
+  }, []);
 
-    const fetchMeals = async () => {
-        if (!date) return;
-
-        const token = await getAccessToken();
-        if (!token) {
-            return;
-        }
-
-        const res = await fetch(`/api/tracking?date=${date.toISOString()}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            setMeals(data);
-        }
-    };
-
-    useEffect(() => {
-        fetchMeals();
-    }, [date]);
-
-    const handleRemove = async (id: string) => {
-        const token = await getAccessToken();
-        if (!token) {
-            return;
-        }
-
-        const res = await fetch('/api/tracking', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ id }),
-        });
-
-        if (res.ok) {
-            setMeals(prev => prev.filter(m => m.id !== id));
-        }
-    };
-
-    const handleAddMealClick = () => {
-        setNewMealTitle("");
-        setNewMealCalories("");
-        setNewMealCarbohydrates("");
-        setNewMealProtein("");
-        setNewMealFat("");
-        setNewMealType('meat');
-        setOpenAddDialog(true);
-    };
-
-    const handleSaveMeal = async () => {
-        if (
-            !newMealTitle ||
-            newMealCalories === "" ||
-            newMealCarbohydrates === "" ||
-            newMealProtein === "" ||
-            newMealFat === ""
-        ) {
-            alert("Bitte alle Felder ausfüllen.");
-            return;
-        }
-
-        const token = await getAccessToken();
-        if (!token) {
-            return;
-        }
-
-        const payload = {
-            title: newMealTitle,
-            calories: newMealCalories,
-            carbohydrates: newMealCarbohydrates,
-            protein: newMealProtein,
-            fat: newMealFat,
-            containsMeat: newMealType === 'meat',
-            date: date?.toISOString(),
-        };
-
-        const res = await fetch('/api/tracking', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (res.ok) {
-            const json = await res.json();
-            setMeals(prev => [...prev, json]);
-        }
-
-        setOpenAddDialog(false);
-    };
-
-    if (!date) {
-        return null;
+  // 2. Tracked Meals für den gewählten Tag laden
+  const fetchTrackedMeals = async () => {
+    if (!date) return;
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Nicht eingeloggt.");
+      return;
     }
 
-    return (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="20vh">
-            <Paper elevation={2} sx={{ padding: 4, width: 1100 }}>
-                <Stack spacing={2} sx={{ justifyContent: "flex-start", alignItems: "stretch" }}>
-                    <Box display="flex" justifyContent="space-between">
-                        <LocalizationProvider dateAdapter={AdapterDateFns}>
-                            <DatePicker
-                                label="Date"
-                                value={date}
-                                onChange={(newDate) => setDate(newDate)}
-                                slotProps={{
-                                    textField: {
-                                        fullWidth: false,
-                                        sx: { mb: 2 }
-                                    },
-                                }}
-                            />
-                        </LocalizationProvider>
-                        <Button
-                            variant="contained"
-                            sx={{ backgroundColor: 'black', color: 'white', height: '56px', px: 3 }}
-                            onClick={handleAddMealClick}
-                        >
-                            Add Meal
-                        </Button>
+    try {
+      const iso = date.toISOString();
+      const res = await fetch(`/api/trackedMeal?date=${iso}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Fehler beim Laden der getrackten Meals");
+      const data: TrackedMeal[] = await res.json();
+      setTrackedMeals(data);
+    } catch {
+      setError("Fehler beim Laden getrackter Meals.");
+    }
+  };
+
+  useEffect(() => {
+    fetchTrackedMeals();
+  }, [date]);
+
+  // 3. Meal-Pool einmalig laden, wenn Dialog geöffnet wird
+  const openMealPool = async () => {
+    setOpenSelectDialog(true);
+    if (mealPool.length > 0) return;
+    setLoadingPool(true);
+
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Nicht eingeloggt.");
+      setLoadingPool(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/meals", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Fehler beim Laden der Meals");
+      const data: MealTemplate[] = await res.json();
+      setMealPool(data);
+    } catch {
+      setError("Fehler beim Laden der Meal-Vorlagen.");
+    } finally {
+      setLoadingPool(false);
+    }
+  };
+
+  // 4. Neues getracktes Meal anlegen
+  const handleAddTrackedMeal = async (mealId: string) => {
+    if (!date) return;
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Nicht eingeloggt.");
+      return;
+    }
+
+    try {
+      const payload = { mealId, date: date.toISOString() };
+      const res = await fetch("/api/trackedMeal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Fehler beim Tracken");
+      const created: TrackedMeal = await res.json();
+      setTrackedMeals((prev) => [...prev, created]);
+    } catch {
+      setError("Fehler beim Hinzufügen getrackter Mahlzeit.");
+    }
+  };
+
+  // 5. Ein getracktes Meal entfernen
+  const handleRemoveTracked = async (trackedId: string) => {
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Nicht eingeloggt.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/trackedMeal", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: trackedId }),
+      });
+      if (!res.ok) throw new Error("Fehler beim Entfernen");
+      setTrackedMeals((prev) => prev.filter((t) => t.id !== trackedId));
+    } catch {
+      setError("Fehler beim Entfernen getrackter Mahlzeit.");
+    }
+  };
+
+  if (!date) return null;
+
+  return (
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="flex-start"
+      sx={{ py: 4, backgroundColor: "#f7f7f7", minHeight: "100vh" }}
+    >
+      <Paper
+        elevation={3}
+        sx={{
+          padding: 4,
+          width: 1000,
+          borderRadius: 2,
+        }}
+      >
+        <Stack spacing={3}>
+          {/* Datumsauswahl + Button zum Öffnen des Meal-Pools */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Datum auswählen"
+                value={date}
+                onChange={(newDate) => setDate(newDate)}
+                slotProps={{
+                  textField: {
+                    sx: { mb: 0 },
+                  },
+                }}
+              />
+            </LocalizationProvider>
+
+            <Button
+              variant="contained"
+              startIcon={<AddCircleOutlineIcon />}
+              sx={{
+                backgroundColor: "#1976d2",
+                color: "white",
+                "&:hover": { backgroundColor: "#115293" },
+              }}
+              onClick={openMealPool}
+            >
+              Meal hinzufügen
+            </Button>
+          </Box>
+
+          {/* Überschrift + Fehlermeldung */}
+          <Typography variant="h5" fontWeight="bold">
+            Getrackte Mahlzeiten am{" "}
+            {date.toLocaleDateString("de-DE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
+          </Typography>
+          {error && <Typography color="error">{error}</Typography>}
+
+          {/* Liste der getrackten Meals */}
+          <Stack spacing={2}>
+            {trackedMeals.length === 0 && (
+              <Typography variant="body1" color="text.secondary">
+                Für dieses Datum sind noch keine Mahlzeiten getrackt.
+              </Typography>
+            )}
+
+            {trackedMeals.map((tracked) => (
+              <Card key={tracked.id} sx={{ display: "flex", borderRadius: 2 }}>
+                <CardMedia
+                  component="img"
+                  image="https://source.unsplash.com/featured/?food"
+                  alt="Meal"
+                  sx={{ width: 180, height: 180 }}
+                />
+                <Box sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                  <CardContent sx={{ flex: "1 0 auto" }}>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography
+                        component="div"
+                        variant="h6"
+                        fontWeight="bold"
+                      >
+                        {tracked.meal.title}
+                      </Typography>
+                      <IconButton
+                        onClick={() => handleRemoveTracked(tracked.id)}
+                        sx={{ color: "#d32f2f" }}
+                      >
+                        <DeleteOutlineIcon />
+                      </IconButton>
                     </Box>
-                    <Typography variant="h5" fontWeight="bold">
-                        Eaten on this day
+                    <Typography
+                      variant="subtitle1"
+                      color="text.secondary"
+                      component="div"
+                      sx={{ mt: 1 }}
+                    >
+                      {tracked.meal.calories} kcal ·{" "}
+                      {tracked.meal.carbohydrates}g KH · {tracked.meal.protein}g
+                      Protein · {tracked.meal.fat}g Fett
                     </Typography>
+                  </CardContent>
+                </Box>
+              </Card>
+            ))}
+          </Stack>
+        </Stack>
+      </Paper>
 
-                    {meals.map((meal) => (
-                        <Paper key={meal.id} elevation={1} sx={{ padding: 2, width: '100%', display: 'flex' }}>
-                            <CardMedia
-                                component="img"
-                                image="https://source.unsplash.com/featured/?food"
-                                alt="Meal"
-                                sx={{ width: 180, height: 180 }}
-                            />
-                            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, pl: 3 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Typography variant="h5" fontWeight="bold">
-                                            {meal.title}
-                                        </Typography>
-                                        <Typography variant="h5" fontWeight="bold">·</Typography>
-                                        <Typography variant="h6">
-                                            {meal.calories} kcal
-                                        </Typography>
-                                    </Box>
-                                    <Button
-                                        variant="contained"
-                                        sx={{ backgroundColor: 'black', color: 'white', height: '40px' }}
-                                        onClick={() => handleRemove(meal.id)}
-                                    >
-                                        Remove
-                                    </Button>
-                                </Box>
-                                <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between' }}>
-                                    <Box>
-                                        <Typography variant='h6'>{meal.carbohydrates}g Carbohydrates</Typography>
-                                        <Typography variant='h6'>{meal.protein}g Protein</Typography>
-                                        <Typography variant='h6'>{meal.fat}g Fat</Typography>
-                                    </Box>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', pl: 5, pr: 17 }}>
-                                        <FormControlLabel
-                                            control={<Checkbox checked={meal.containsMeat} disabled size="small" sx={{ color: 'black' }} />}
-                                            label={<Typography variant="h6">Contains Meat</Typography>}
-                                        />
-                                        <FormControlLabel
-                                            control={<Checkbox checked={meal.vegetarian} disabled size="small" sx={{ color: 'black' }} />}
-                                            label={<Typography variant="h6">Vegetarian</Typography>}
-                                        />
-                                        <FormControlLabel
-                                            control={<Checkbox checked={meal.vegan} disabled size="small" sx={{ color: 'black' }} />}
-                                            label={<Typography variant="h6">Vegan</Typography>}
-                                        />
-                                    </Box>
-                                </Box>
-                            </Box>
-                        </Paper>
-                    ))}
-                </Stack>
-
-                {/* To add meal */}
-                <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)}>
-                    <DialogTitle>Add New Meal</DialogTitle>
-                    <DialogContent>
-                        <TextField
-                            autoFocus
-                            margin="dense"
-                            label="Meal Title"
-                            fullWidth
-                            value={newMealTitle}
-                            onChange={(e) => setNewMealTitle(e.target.value)}
-                        />
-                        <TextField
-                            margin="dense"
-                            label="Calories"
-                            type="number"
-                            fullWidth
-                            value={newMealCalories}
-                            onChange={(e) => setNewMealCalories(e.target.value === "" ? "" : Number(e.target.value))}
-                        />
-                        <TextField
-                            margin="dense"
-                            label="Carbohydrates (g)"
-                            type="number"
-                            fullWidth
-                            value={newMealCarbohydrates}
-                            onChange={(e) => setNewMealCarbohydrates(e.target.value === "" ? "" : Number(e.target.value))}
-                        />
-                        <TextField
-                            margin="dense"
-                            label="Protein (g)"
-                            type="number"
-                            fullWidth
-                            value={newMealProtein}
-                            onChange={(e) => setNewMealProtein(e.target.value === "" ? "" : Number(e.target.value))}
-                        />
-                        <TextField
-                            margin="dense"
-                            label="Fat (g)"
-                            type="number"
-                            fullWidth
-                            value={newMealFat}
-                            onChange={(e) => setNewMealFat(e.target.value === "" ? "" : Number(e.target.value))}
-                        />
-                        <FormGroup row>
-                            <FormControlLabel
-                                control={<Checkbox
-                                    checked={newMealType === 'meat'}
-                                    onChange={() => setNewMealType('meat')}
-                                />}
-                                label="Meat"
-                            />
-                            <FormControlLabel
-                                control={<Checkbox
-                                    checked={newMealType === 'vegetarian'}
-                                    onChange={() => setNewMealType('vegetarian')}
-                                />}
-                                label="Vegetarian"
-                            />
-                            <FormControlLabel
-                                control={<Checkbox
-                                    checked={newMealType === 'vegan'}
-                                    onChange={() => setNewMealType('vegan')}
-                                />}
-                                label="Vegan"
-                            />
-                        </FormGroup>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setOpenAddDialog(false)}>Cancel</Button>
-                        <Button variant="contained" onClick={handleSaveMeal}>Save</Button>
-                    </DialogActions>
-                </Dialog>
-            </Paper>
-        </Box>
-    );
+      {/* Dialog: Existing Meals aus Pool auswählen */}
+      <Dialog
+        open={openSelectDialog}
+        onClose={() => setOpenSelectDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Meal aus Vorlagen auswählen</DialogTitle>
+        <DialogContent dividers>
+          {loadingPool ? (
+            <Typography>Loading...</Typography>
+          ) : (
+            <List>
+              {mealPool.map((m) => (
+                <ListItem key={m.id} divider>
+                  <ListItemText
+                    primary={m.title}
+                    secondary={`${m.calories} kcal · ${m.carbohydrates}g KH · ${m.protein}g Protein · ${m.fat}g Fett`}
+                  />
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      edge="end"
+                      onClick={() => handleAddTrackedMeal(m.id)}
+                      sx={{ color: "#388e3c" }}
+                    >
+                      <AddCircleOutlineIcon />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+              {mealPool.length === 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  Keine Meal-Vorlagen gefunden.
+                </Typography>
+              )}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenSelectDialog(false)}>Abbrechen</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
 }

@@ -43,7 +43,6 @@ model User {
   id            String            @id @default(cuid())
   email         String            @unique
   name          String?
-  meals         Meal[]
   goals         Goal[]
   recipes       Recipe[]          @relation("UserRecipes")
   waterIntakes  WaterIntake[]
@@ -58,6 +57,10 @@ model User {
   mealPlans     MealPlan[]
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+  trackedMeals  TrackedMeal[] 
+  Meal          Meal[]
+
+
 }
 
 model Meal {
@@ -81,6 +84,7 @@ model Meal {
   mealPlanItems      MealPlanItem[]
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+  trackedMeals       TrackedMeal[]
 }
 
 model Goal {
@@ -274,3 +278,14 @@ model EducationalContent {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model TrackedMeal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  mealId    String
+  meal      Meal     @relation(fields: [mealId], references: [id])
+  date      DateTime
+  createdAt DateTime @default(now())
+}
+
