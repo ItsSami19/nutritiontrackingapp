@@ -1,18 +1,12 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["tracing"]
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 
 enum GoalType {
   CALORIE_INTAKE
