@@ -13,12 +13,12 @@ import {
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useRouter, usePathname } from "next/navigation";
-import { useAuth } from "../../context/AuthContext";
+import { signOut, useSession } from "next-auth/react";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { data: session } = useSession();
 
   // Pfade, auf denen die Navbar nicht angezeigt werden soll
   const hiddenPaths = ["/login", "/signup"];
@@ -38,12 +38,11 @@ export default function Navbar() {
   };
 
   const handleLogoutClick = async () => {
-    const { error } = await signOut();
-    if (error) {
-      console.error("Logout failed:", error.message);
-      alert("Logout fehlgeschlagen. Schau in die Konsole.");
-    } else {
+    try {
+      await signOut({ redirect: false });
       router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
     }
   };
 
@@ -69,7 +68,7 @@ export default function Navbar() {
           >
             <NotificationsIcon />
           </IconButton>
-          {user && (
+          {session?.user && (
             <Button
               color="inherit"
               variant="outlined"
@@ -82,18 +81,20 @@ export default function Navbar() {
         </Box>
       </Toolbar>
 
-      <Box sx={{ px: 2, pb: 1, alignSelf: "flex-start" }}>
-        <Tabs
-          value={currentTab}
-          onChange={handleTabChange}
-          textColor="inherit"
-          indicatorColor="secondary"
-        >
-          <Tab label="Tracking" value="/tracking" />
-          <Tab label="Meals" value="/meals" />
-          <Tab label="Statistics" value="/statistics" />
-        </Tabs>
-      </Box>
+      {session?.user && (
+        <Box sx={{ px: 2, pb: 1, alignSelf: "flex-start" }}>
+          <Tabs
+            value={currentTab}
+            onChange={handleTabChange}
+            textColor="inherit"
+            indicatorColor="secondary"
+          >
+            <Tab label="Tracking" value="/tracking" />
+            <Tab label="Meals" value="/meals" />
+            <Tab label="Statistics" value="/statistics" />
+          </Tabs>
+        </Box>
+      )}
     </AppBar>
   );
 }

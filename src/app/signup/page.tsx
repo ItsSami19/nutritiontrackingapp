@@ -2,19 +2,54 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Box, Button, TextField, Typography, Paper } from "@mui/material";
-import { useAuth } from "../../context/AuthContext";
+import { signIn } from "next-auth/react";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { signUp } = useAuth();
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await signUp(email, password);
-    if (error) alert(error.message);
-    else router.push("/");
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Signup failed");
+      }
+
+      // Auto-login after signup
+      const signInResult = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (signInResult?.error) {
+        router.push("/login");
+      } else {
+        router.push("/");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -25,6 +60,7 @@ export default function SignUpPage() {
         bgcolor: "#E0FFE0",
         borderRadius: 3,
         minWidth: 340,
+        maxWidth: 400,
         mx: "auto",
         mt: 8,
       }}
@@ -38,6 +74,13 @@ export default function SignUpPage() {
       >
         SIGN UP
       </Typography>
+
+      {error && (
+        <Typography color="error" mb={2} align="center">
+          {error}
+        </Typography>
+      )}
+
       <Box component="form" onSubmit={handleSubmit}>
         <TextField
           label="Email"
@@ -47,6 +90,7 @@ export default function SignUpPage() {
           required
           fullWidth
           margin="normal"
+          autoComplete="email"
         />
         <TextField
           label="Password"
@@ -56,11 +100,13 @@ export default function SignUpPage() {
           required
           fullWidth
           margin="normal"
+          autoComplete="new-password"
         />
         <Button
           type="submit"
           fullWidth
           variant="contained"
+          disabled={isLoading}
           sx={{
             mt: 3,
             bgcolor: "#388E3C",
@@ -69,11 +115,14 @@ export default function SignUpPage() {
             py: 1.5,
           }}
         >
-          Sign Up
+          {isLoading ? "Creating Account..." : "Sign Up"}
         </Button>
       </Box>
       <Typography mt={2} align="center">
-        Already have an account? <a href="/login">Login</a>
+        Already have an account?{" "}
+        <a href="/login" style={{ color: "#388E3C", fontWeight: "bold" }}>
+          Login
+        </a>
       </Typography>
     </Paper>
   );

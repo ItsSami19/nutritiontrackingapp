@@ -1,104 +1,172 @@
+// app/api/statistics/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { supabase } from "@/lib/supabaseClient";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
 
-export async function GET(req: Request) {
-  const prisma = new PrismaClient();
-
-  const token = req.headers.get("Authorization")?.replace("Bearer ", "");
-
-  if (!token) {
-    return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
-  }
-
-  const { data: user, error } = await supabase.auth.getUser(token);
-
-  if (error || !user) {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-  }
-
-  const userId = user.user.id;
-
-  const allMeals = await prisma.meal.findMany({ where: { userId } });
-  const totalMealCount = allMeals.length;
-
-  let veganCount = 0;
-  let vegetarianCount = 0;
-  let meatCount = 0;
-  let totalCalories = 0;
-  let totalCO2Savings = 0;
-  let totalRating = 0;
-
-  for (const meal of allMeals) {
-    totalCalories += meal.calories;
-    totalCO2Savings += meal.co2Savings || 0;
-    totalRating += meal.rating;
-
-    if (meal.vegan) {
-      veganCount++;
-    } else if (meal.vegetarian) {
-      vegetarianCount++;
-    } else if (meal.containsMeat) {
-      meatCount++;
+function getStartDate(range: string): Date {
+  const now = new Date();
+  switch (range) {
+    case "day": {
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      return start;
+    }
+    case "week": {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+      return start;
+    }
+    case "month": {
+      const start = new Date(now);
+      start.setMonth(start.getMonth() - 1);
+      start.setHours(0, 0, 0, 0);
+      return start;
+    }
+    case "year": {
+      const start = new Date(now);
+      start.setFullYear(start.getFullYear() - 1);
+      start.setHours(0, 0, 0, 0);
+      return start;
+    }
+    default: {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+      return start;
     }
   }
+}
 
-  const veganPercentage =
-    totalMealCount > 0 ? Math.round((veganCount / totalMealCount) * 100) : 0;
-  const vegetarianPercentage =
-    totalMealCount > 0 ? Math.round((vegetarianCount / totalMealCount) * 100) : 0;
-  const meatPercentage =
-    totalMealCount > 0 ? Math.round((meatCount / totalMealCount) * 100) : 0;
+export async function GET(request: Request) {
+  try {
+    // 1. Session prüfen
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.user.id;
 
-  const macros = await prisma.meal.aggregate({
-    where: { userId },
-    _sum: {
-      protein: true,
-      fat: true,
-      carbohydrates: true,
-    },
-  });
+    // 2. Query-Parameter auslesen
+    const { searchParams } = new URL(request.url);
+    const range = searchParams.get("range") || "week";
+    const startDate = getStartDate(range);
+    const endDate = new Date();
 
-  const totalProtein = macros._sum.protein ?? 0;
-  const totalFat = macros._sum.fat ?? 0;
-  const totalCarbs = macros._sum.carbohydrates ?? 0;
-  const macroSum = totalProtein + totalFat + totalCarbs;
+    // 3. Getrackte Mahlzeiten innerhalb des Zeitraums abfragen
+    const trackedMeals = await prisma.trackedMeal.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate },
+      },
+      include: {
+        meal: true,
+      },
+    });
 
-  const proteinPercentage =
-    macroSum > 0 ? Math.round((totalProtein / macroSum) * 100) : 0;
-  const fatPercentage =
-    macroSum > 0 ? Math.round((totalFat / macroSum) * 100) : 0;
-  const carbsPercentage =
-    macroSum > 0 ? Math.round((totalCarbs / macroSum) * 100) : 0;
+    // 4. Wasser-Einträge innerhalb des Zeitraums abfragen
+    const waterEntries = await prisma.waterIntake.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate },
+      },
+    });
 
-  const weightEntries = await prisma.weightEntry.findMany({
-    where: { userId },
-    orderBy: { date: 'asc' },
-  });
-  
-  const totalWeightEntries = weightEntries.length;
-  const latestWeight = totalWeightEntries > 0 ? weightEntries[totalWeightEntries - 1] : null;
+    // 5. Letzten Gewichtseintrag abrufen (unabhängig vom Zeitraum)
+    const latestWeightEntry = await prisma.weightEntry.findFirst({
+      where: { userId },
+      orderBy: { date: "desc" },
+    });
 
-  const waterIntakes = await prisma.waterIntake.findMany({
-    where: { userId },
-    orderBy: { date: 'asc' },
-  });
+    // 6. Statistics berechnen
+    let totalCalories = 0;
+    let totalCO2Savings = 0;
+    let sumProtein = 0;
+    let sumFat = 0;
+    let sumCarbs = 0;
+    let sumRatings = 0;
+    let countRatedMeals = 0;
+    let countVegan = 0;
+    let countVegetarian = 0;
+    let countMeat = 0;
 
-  const totalWaterIntakes = waterIntakes.reduce((acc, entry) => acc + entry.amountMl, 0);
+    for (const t of trackedMeals) {
+      const m = t.meal;
 
-  const averageRating = totalMealCount > 0 ? totalRating / totalMealCount : 0;
+      // Kalorien & CO2
+      totalCalories += m.calories;
+      totalCO2Savings += m.co2Savings ?? 0;
 
-  return NextResponse.json({
-    veganPercentage,
-    vegetarianPercentage,
-    meatPercentage,
-    proteinPercentage,
-    fatPercentage,
-    carbsPercentage,
-    totalCalories,
-    totalCO2Savings,
-    averageRating,
-    latestWeight,
-    totalWaterIntakes,
-  });
+      // Makros
+      sumProtein += m.protein;
+      sumFat += m.fat;
+      sumCarbs += m.carbohydrates;
+
+      // Rating nur berücksichtigen, wenn > 0
+      if (m.rating > 0) {
+        sumRatings += m.rating;
+        countRatedMeals++;
+      }
+
+      // Mahlzeitentyp
+      if (m.vegan) {
+        countVegan++;
+      } else if (m.vegetarian) {
+        countVegetarian++;
+      } else if (m.containsMeat) {
+        countMeat++;
+      }
+    }
+
+    const totalMacroSum = sumProtein + sumFat + sumCarbs;
+    const proteinPercentage =
+      totalMacroSum > 0 ? Math.round((sumProtein / totalMacroSum) * 100) : 0;
+    const fatPercentage =
+      totalMacroSum > 0 ? Math.round((sumFat / totalMacroSum) * 100) : 0;
+    const carbsPercentage =
+      totalMacroSum > 0 ? Math.round((sumCarbs / totalMacroSum) * 100) : 0;
+
+    const mealCount = trackedMeals.length;
+    const veganPercentage =
+      mealCount > 0 ? Math.round((countVegan / mealCount) * 100) : 0;
+    const vegetarianPercentage =
+      mealCount > 0 ? Math.round((countVegetarian / mealCount) * 100) : 0;
+    const meatPercentage =
+      mealCount > 0 ? Math.round((countMeat / mealCount) * 100) : 0;
+
+    const averageRating =
+      countRatedMeals > 0
+        ? parseFloat((sumRatings / countRatedMeals).toFixed(2))
+        : 0;
+
+    const totalWaterIntakes = waterEntries.reduce(
+      (acc, w) => acc + w.amountMl,
+      0
+    );
+
+    const latestWeight = latestWeightEntry ? latestWeightEntry.weightKg : null;
+
+    const stats = {
+      proteinPercentage,
+      fatPercentage,
+      carbsPercentage,
+      veganPercentage,
+      vegetarianPercentage,
+      meatPercentage,
+      totalCalories,
+      totalCO2Savings: parseFloat(totalCO2Savings.toFixed(2)),
+      averageRating,
+      totalWaterIntakes,
+      latestWeight,
+    };
+
+    return NextResponse.json(stats);
+  } catch (error) {
+    console.error("Error fetching statistics:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

@@ -2,7 +2,7 @@
 
 import Navbar from "./components/navbar";
 import { CssBaseline, Container } from "@mui/material";
-import { AuthProvider } from "../context/AuthContext"; // Pfad ggf. anpassen
+import { SessionProvider } from "next-auth/react";
 
 export default function RootLayout({
   children,
@@ -11,10 +11,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <CssBaseline />
-        <AuthProvider>
+        <SessionProvider>
           <Navbar />
           <Container sx={{ mt: 4 }}>{children}</Container>
-        </AuthProvider>
+        </SessionProvider>
       </body>
     </html>
   );

@@ -1,22 +1,52 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Button, TextField, Typography, Paper } from "@mui/material";
-import { useAuth } from "../../context/AuthContext";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Paper,
+  CircularProgress,
+} from "@mui/material";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { signIn } = useAuth();
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await signIn(email, password);
-    if (error) alert(error.message);
-    else router.push("/");
-  };
+    setIsLoading(true);
+    setError("");
 
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
+      if (result?.ok) {
+        router.push("/");
+        return;
+      }
+
+      throw new Error("Login failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+      console.error("Login error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <Paper
       elevation={4}
@@ -25,6 +55,7 @@ export default function LoginPage() {
         bgcolor: "#EAD9FF",
         borderRadius: 3,
         minWidth: 340,
+        maxWidth: 400,
         mx: "auto",
         mt: 8,
       }}
@@ -38,6 +69,13 @@ export default function LoginPage() {
       >
         LOGIN
       </Typography>
+
+      {error && (
+        <Typography color="error" mb={2} align="center">
+          {error}
+        </Typography>
+      )}
+
       <Box component="form" onSubmit={handleSubmit}>
         <TextField
           label="Email"
@@ -47,6 +85,7 @@ export default function LoginPage() {
           required
           fullWidth
           margin="normal"
+          autoComplete="email"
         />
         <TextField
           label="Password"
@@ -56,11 +95,13 @@ export default function LoginPage() {
           required
           fullWidth
           margin="normal"
+          autoComplete="current-password"
         />
         <Button
           type="submit"
           fullWidth
           variant="contained"
+          disabled={isLoading}
           sx={{
             mt: 3,
             bgcolor: "#5E3D84",
@@ -69,11 +110,14 @@ export default function LoginPage() {
             py: 1.5,
           }}
         >
-          Login
+          {isLoading ? <CircularProgress size={24} color="inherit" /> : "Login"}
         </Button>
       </Box>
       <Typography mt={2} align="center">
-        Dont have an account? <a href="/signup">Sign Up</a>
+        Don't have an account?{" "}
+        <a href="/signup" style={{ color: "#5E3D84", fontWeight: "bold" }}>
+          Sign Up
+        </a>
       </Typography>
     </Paper>
   );
