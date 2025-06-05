@@ -1,38 +1,59 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      {
+        status: 401,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      }
+    );
+  }
+
   try {
     const meals = await prisma.meal.findMany({
+      where: { userId: session.user.id },
       select: {
         id: true,
-        user: true,
-        userId: true,
         title: true,
         calories: true,
         carbohydrates: true,
-        fat: true,
         protein: true,
+        fat: true,
         containsMeat: true,
         vegetarian: true,
         vegan: true,
         imageUrl: true,
-        date: true,
-        rating: true,
-        environmentalScore: true,
-        co2Savings: true,
-        posts: true,
-        mealPlanItems: true,
-        createdAt: true,
-        updatedAt: true,
       },
     });
-    return NextResponse.json(meals);
+
+    return NextResponse.json(meals, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json",
+      },
+    });
   } catch (error) {
-    console.error("Prisma‐Error auf Vercel:", error);
+    console.error("Error fetching meals:", error);
     return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 500 }
+      { error: "Failed to fetch meals" },
+      {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      }
     );
   }
 }

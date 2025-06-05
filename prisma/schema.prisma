@@ -59,6 +59,9 @@ model User {
   updatedAt     DateTime          @updatedAt
   trackedMeals  TrackedMeal[] 
   Meal          Meal[]
+  password  String    // Achtung: Passwörter im Klartext!
+
+
 
 
 }
@@ -281,11 +284,11 @@ model EducationalContent {
 
 model TrackedMeal {
   id        String   @id @default(cuid())
-  userId    String
   user      User     @relation(fields: [userId], references: [id])
-  mealId    String
+  userId    String
   meal      Meal     @relation(fields: [mealId], references: [id])
+  mealId    String
   date      DateTime
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-

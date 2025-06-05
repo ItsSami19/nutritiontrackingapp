@@ -1,196 +1,324 @@
-'use client';
+"use client";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Paper,
+  Stack,
+  Card,
+  CardContent,
+  CircularProgress,
+  Alert,
+  useTheme,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import { useSession } from "next-auth/react";
+import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { Box, Typography, Card, CardContent } from '@mui/material';
-import { PieChart, Pie, Cell, Legend } from 'recharts';
-import axios from 'axios';
+// Farben für die Diagramme
+const MACRO_COLORS = ["#FF6384", "#FFCE56", "#36A2EB"];
+const MEAL_TYPE_COLORS = ["#4CAF50", "#FFCE56", "#FF6384"];
 
-const MACRO_COLORS = ['#FF6384', '#FFCE56', '#36A2EB'];
-const MEAL_TYPE_COLORS = ['#4CAF50', '#FFCE56', '#FF6384'];
+interface Statistics {
+  proteinPercentage: number;
+  fatPercentage: number;
+  carbsPercentage: number;
+  veganPercentage: number;
+  vegetarianPercentage: number;
+  meatPercentage: number;
+  totalCalories: number;
+  totalCO2Savings: number;
+  averageRating: number;
+  totalWaterIntakes: number;
+  latestWeight: number | null;
+}
 
-const CHART_SIZE = 250;
-const OUTER_RADIUS = 80;
-const LEGEND_HEIGHT = 36;
-const CHART_CONTAINER_HEIGHT = CHART_SIZE + LEGEND_HEIGHT + 60;
+export default function StatisticsPage() {
+  const { data: session, status } = useSession();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<Statistics | null>(null);
+  const [timeRange, setTimeRange] = useState<string>("week");
+  const theme = useTheme();
 
-const renderMacroPieChart = (protein: number, fat: number, carbs: number) => {
-  const data = [
-    { name: 'Protein', value: protein },
-    { name: 'Fat', value: fat },
-    { name: 'Carbs', value: carbs },
-  ];
+  const fetchStatistics = async () => {
+    if (status !== "authenticated") return;
 
-  return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="space-between"
-      height={CHART_CONTAINER_HEIGHT}
-      minWidth={CHART_SIZE}
-      p={1}
-    >
-      <Typography variant="h6" mb={1} align="center">Macronutrients</Typography>
-      <PieChart width={CHART_SIZE} height={CHART_SIZE}>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          innerRadius={40}
-          outerRadius={OUTER_RADIUS}
-          label
-        >
-          {data.map((_, index) => (
-            <Cell key={`macro-cell-${index}`} fill={MACRO_COLORS[index]} />
-          ))}
-        </Pie>
-        <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
-      </PieChart>
-    </Box>
-  );
-};
+    setLoading(true);
+    setError(null);
 
-const renderMealTypePieChart = (vegan: number, vegetarian: number, meat: number) => {
-  const data = [
-    { name: 'Vegan', value: vegan },
-    { name: 'Vegetarian', value: vegetarian },
-    { name: 'Meat', value: meat },
-  ];
+    try {
+      const res = await fetch(`/api/statistics?range=${timeRange}`);
 
-  return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="space-between"
-      height={CHART_CONTAINER_HEIGHT}
-      minWidth={CHART_SIZE}
-      p={1}
-    >
-      <Typography variant="h6" mb={1} align="center">Meal Types</Typography> {/* Überschrift oben */}
-      <PieChart width={CHART_SIZE} height={CHART_SIZE}>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          innerRadius={40}
-          outerRadius={OUTER_RADIUS}
-          label
-        >
-          {data.map((_, index) => (
-            <Cell key={`mealtype-cell-${index}`} fill={MEAL_TYPE_COLORS[index]} />
-          ))}
-        </Pie>
-        <Legend verticalAlign="bottom" height={LEGEND_HEIGHT} />
-      </PieChart>
-    </Box>
-  );
-};
-
-export default function Home() {
-  const { user, session } = useAuth();
-  const [stats, setStats] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await axios.get('/api/statistics');
-        setStats(response.data);
-      } catch (error) {
-        console.error('Error fetching statistics:', error);
+      if (!res.ok) {
+        throw new Error("Failed to fetch statistics");
       }
-    };
 
-    fetchStats();
-  }, []);
-
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!user || !session) return;
-
-      try {
-        const response = await axios.get('/api/statistics', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        setStats(response.data);
-      } catch (error) {
-        console.error('Error fetching statistics:', error);
-      }
-    };
-
-    if (typeof window !== 'undefined') {
-      fetchStats();
+      const data = await res.json();
+      setStats(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  }, [user, session]);
+  };
 
-  if (!stats) return null;
+  useEffect(() => {
+    fetchStatistics();
+  }, [status, timeRange]);
 
-  return (
-    <Box
-      display="flex"
-      flexDirection={{ xs: 'column', sm: 'row' }}
-      justifyContent="center"
-      alignItems="flex-start"
-      gap={4}
-      flexWrap="wrap"
-    >
+  if (status === "loading") {
+    return (
       <Box
         display="flex"
-        flexDirection="column"
+        justifyContent="center"
         alignItems="center"
-        gap={6}
-        minWidth={{ xs: 'auto', sm: CHART_SIZE + 32 }}
-        flex={1}
+        minHeight="100vh"
       >
-        {renderMacroPieChart(stats.proteinPercentage, stats.fatPercentage, stats.carbsPercentage)}
-        {renderMealTypePieChart(stats.veganPercentage, stats.vegetarianPercentage, stats.meatPercentage)}
+        <CircularProgress />
       </Box>
+    );
+  }
 
+  if (status === "unauthenticated") {
+    return (
       <Box
-        display="grid"
-        gridTemplateColumns={{ xs: '1fr', sm: '1fr' }}
-        gap={3}
-        minWidth={{ xs: 'auto', sm: 300 }}
-        flex={1}
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
       >
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle1">Total Calories</Typography>
-            <Typography variant="h6">{stats.totalCalories}</Typography>
-          </CardContent>
-        </Card>
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle1">CO₂ Savings</Typography>
-            <Typography variant="h6">{stats.totalCO2Savings} kg</Typography>
-          </CardContent>
-        </Card>
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle1">Avg. Meal Rating</Typography>
-            <Typography variant="h6">{stats.averageRating}</Typography>
-          </CardContent>
-        </Card>
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle1">Water Intake</Typography>
-            <Typography variant="h6">{stats.totalWaterIntakes} ml</Typography>
-          </CardContent>
-        </Card>
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle1">Latest Weight</Typography>
-            <Typography variant="h6">
-              {stats.latestWeight ? `${stats.latestWeight.weightKg} kg` : 'No data'}
-            </Typography>
-          </CardContent>
-        </Card>
+        <Typography>Please log in to view statistics</Typography>
+      </Box>
+    );
+  }
+
+  // Render-Funktion für das Makronährstoff-Diagramm
+  const renderMacroPieChart = () => {
+    if (!stats) return null;
+
+    const data = [
+      { name: "Protein", value: stats.proteinPercentage },
+      { name: "Fat", value: stats.fatPercentage },
+      { name: "Carbs", value: stats.carbsPercentage },
+    ];
+
+    return (
+      <Box display="flex" flexDirection="column" alignItems="center">
+        <Typography variant="h6" mb={1}>
+          Macronutrients
+        </Typography>
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={90}
+              label={({ name, percent }) =>
+                `${name}: ${(percent * 100).toFixed(0)}%`
+              }
+            >
+              {data.map((_, index) => (
+                <Cell key={`macro-cell-${index}`} fill={MACRO_COLORS[index]} />
+              ))}
+            </Pie>
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </Box>
+    );
+  };
+
+  // Render-Funktion für das Mahlzeitentyp-Diagramm
+  const renderMealTypePieChart = () => {
+    if (!stats) return null;
+
+    const data = [
+      { name: "Vegan", value: stats.veganPercentage },
+      { name: "Vegetarian", value: stats.vegetarianPercentage },
+      { name: "Meat", value: stats.meatPercentage },
+    ];
+
+    return (
+      <Box display="flex" flexDirection="column" alignItems="center">
+        <Typography variant="h6" mb={1}>
+          Meal Types
+        </Typography>
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={90}
+              label={({ name, percent }) =>
+                `${name}: ${(percent * 100).toFixed(0)}%`
+              }
+            >
+              {data.map((_, index) => (
+                <Cell
+                  key={`mealtype-cell-${index}`}
+                  fill={MEAL_TYPE_COLORS[index]}
+                />
+              ))}
+            </Pie>
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </Box>
+    );
+  };
+
+  return (
+    <Box sx={{ py: 4, minHeight: "100vh" }}>
+      <Box display="flex" justifyContent="center">
+        <Paper elevation={3} sx={{ p: 4, width: "100%", maxWidth: 1200 }}>
+          <Stack spacing={3}>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Typography variant="h4" fontWeight="bold">
+                Nutrition Statistics
+              </Typography>
+
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel>Time Range</InputLabel>
+                <Select
+                  value={timeRange}
+                  label="Time Range"
+                  onChange={(e) => setTimeRange(e.target.value)}
+                >
+                  <MenuItem value="day">Today</MenuItem>
+                  <MenuItem value="week">This Week</MenuItem>
+                  <MenuItem value="month">This Month</MenuItem>
+                  <MenuItem value="year">This Year</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            {loading ? (
+              <Box display="flex" justifyContent="center">
+                <CircularProgress size={60} />
+              </Box>
+            ) : stats ? (
+              <>
+                <Box
+                  display="flex"
+                  flexWrap="wrap"
+                  gap={4}
+                  justifyContent="center"
+                >
+                  <Box flex={1} minWidth={400} maxWidth={500}>
+                    {renderMacroPieChart()}
+                  </Box>
+
+                  <Box flex={1} minWidth={400} maxWidth={500}>
+                    {renderMealTypePieChart()}
+                  </Box>
+                </Box>
+
+                <Box
+                  display="grid"
+                  gridTemplateColumns={{
+                    xs: "1fr",
+                    sm: "1fr 1fr",
+                    md: "repeat(3, 1fr)",
+                  }}
+                  gap={3}
+                  mt={4}
+                >
+                  <Card variant="outlined" sx={{ height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Total Calories
+                      </Typography>
+                      <Typography variant="h3" fontWeight="bold">
+                        {stats.totalCalories}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+
+                  <Card variant="outlined" sx={{ height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        CO₂ Savings
+                      </Typography>
+                      <Typography variant="h3" fontWeight="bold">
+                        {stats.totalCO2Savings.toFixed(2)} kg
+                      </Typography>
+                    </CardContent>
+                  </Card>
+
+                  <Card variant="outlined" sx={{ height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Avg. Meal Rating
+                      </Typography>
+                      <Typography variant="h3" fontWeight="bold">
+                        {stats.averageRating}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+
+                  <Card variant="outlined" sx={{ height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Protein Intake
+                      </Typography>
+                      <Typography variant="h3" fontWeight="bold">
+                        {stats.proteinPercentage}%
+                      </Typography>
+                    </CardContent>
+                  </Card>
+
+                  <Card variant="outlined" sx={{ height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Vegan Meals
+                      </Typography>
+                      <Typography variant="h3" fontWeight="bold">
+                        {stats.veganPercentage}%
+                      </Typography>
+                    </CardContent>
+                  </Card>
+
+                  <Card variant="outlined" sx={{ height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Water Intake
+                      </Typography>
+                      <Typography variant="h3" fontWeight="bold">
+                        {stats.totalWaterIntakes} ml
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </>
+            ) : (
+              <Typography color="text.secondary" textAlign="center">
+                No statistics available
+              </Typography>
+            )}
+          </Stack>
+        </Paper>
       </Box>
     </Box>
   );
